@@ -1,0 +1,62 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>账号列表</title>
+</head>
+<body>
+<h2>我的账号</h2>
+<button onclick="logout()" style="margin-bottom:10px;">退出登录</button>
+<div id="accounts"></div>
+
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    loadAccounts();
+
+    async function loadAccounts() {
+        const res = await fetch('/api/accounts', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) {
+            alert('会话已过期，请重新登录');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+            return;
+        }
+        const accounts = await res.json();
+        const div = document.getElementById('accounts');
+        if (accounts.length === 0) {
+            div.innerHTML = '<p>暂无账号，请通过 API 添加</p>';
+            return;
+        }
+        div.innerHTML = accounts.map(a => `
+                <div style="border:1px solid #ccc; margin:10px; padding:12px; border-radius:6px;">
+                    <strong>${a.serviceName}</strong><br>
+                    账号: ${a.username}<br>
+                    链接: ${a.url || '—'}<br>
+                    <button onclick="showPassword(${a.id})" style="margin-top:8px;">显示密码</button>
+                </div>
+            `).join('');
+    }
+
+    async function showPassword(id) {
+        const res = await fetch(`/api/accounts/${id}/password`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            prompt('密码已解密（点击确定后消失）：', data.password);
+        } else {
+            alert('获取密码失败');
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        window.location.href = 'login.html';
+    }
+</script>
+</body>
+</html>
